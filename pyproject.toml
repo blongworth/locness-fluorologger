@@ -1,0 +1,19 @@
+[build-system]
+requires = ["setuptools", "setuptools-scm"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "locness-fluorometer-logger"
+authors = [
+    {name = "Brett Longworth", email = "blongworth@whoi.edu"}
+]
+description = "Acquire and log underway fluorometer, GPS, and TSG data"
+version = "0.0.1"
+readme = "README.md"
+requires-python = ">=3.7"
+dependencies = [
+    "pyserial",
+    "pynmea2",
+    "nidaqmx",
+    "sqlite3"
+]
