@@ -22,9 +22,6 @@ class GPSData:
                 return True
         return False
 
-# Open a file to write the output
-output_file = open("gps_data.txt", "a")  # "a" for append mode
-
 # Define a function to print and write data
 def print_and_write_data(gps_data):
     if gps_data.latitude is not None and gps_data.longitude is not None and gps_data.time is not None:
@@ -73,6 +70,9 @@ async def main(gps_source = 'serial'):
 
     # Create a packet queue
     packet_queue = asyncio.Queue()
+
+    # Open a file to write the output
+    output_file = open("gps_data.txt", "a")  # "a" for append mode
 
     if gps_source == 'udp':
         # Define the IP address and port of the server
