@@ -1,4 +1,5 @@
 import nidaqmx
+from nidaqmx.constants import AcquisitionType, TerminalConfiguration, LineGrouping
 import time
 
 # TODO: read voltage as HW timed burst
@@ -13,9 +14,9 @@ class Fluorimeter:
 
         # Connect to the DAQ device
         self.task = nidaqmx.Task()
-        self.task.ai_channels.add_ai_voltage_chan("Dev1/ai0", terminal_config=nidaqmx.constants.TerminalConfiguration.DIFFERENTIAL)
+        self.task.ai_channels.add_ai_voltage_chan("Dev1/ai0", terminal_config=TerminalConfiguration.DIFFERENTIAL)
         # Add digital output channels to the task
-        self.task.do_channels.add_do_chan("Dev1/port0/line0:1", line_grouping=nidaqmx.constants.LineGrouping.CHAN_PER_LINE)
+        self.task.do_channels.add_do_chan("Dev1/port0/line0:1", line_grouping=LineGrouping.CHAN_PER_LINE)
 
     def read_voltage(self):
         voltages = []
