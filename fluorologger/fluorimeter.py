@@ -14,9 +14,9 @@ class Fluorimeter:
 
         # Connect to the DAQ device
         self.task = nidaqmx.Task()
-        self.task.ai_channels.add_ai_voltage_chan("Dev1/ai0", terminal_config=TerminalConfiguration.DIFFERENTIAL)
-        # Add digital output channels to the task
-        self.task.do_channels.add_do_chan("Dev1/port0/line0:1", line_grouping=LineGrouping.CHAN_PER_LINE)
+        self.task.ai_channels.add_ai_voltage_chan("fluor/ai0", terminal_config=TerminalConfiguration.DIFF)
+        # Add digital output channels to the task - needs to be separate task
+        #self.task.do_channels.add_do_chan("fluor/port0/line0:1", line_grouping=LineGrouping.CHAN_PER_LINE)
 
     def read_voltage(self):
         voltages = []
@@ -24,7 +24,7 @@ class Fluorimeter:
         for i in range(50):
             voltage = self.task.read()
             voltages.append(voltage)
-            time.sleep(0.02)  # 50 readings per second
+            time.sleep(0.01)  # 50 readings per 0.5 second
 
         avg_voltage = sum(voltages) / len(voltages)
         return avg_voltage
