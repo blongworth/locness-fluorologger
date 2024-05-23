@@ -25,8 +25,10 @@ class Fluorimeter:
         # Connect to the DAQ device
         self.task = nidaqmx.Task()
         self.task.ai_channels.add_ai_voltage_chan("fluor/ai0", terminal_config=TerminalConfiguration.DIFF)
+        
         # Add digital output channels to the task - needs to be separate task
-        #self.task.do_channels.add_do_chan("fluor/port0/line0:1", line_grouping=LineGrouping.CHAN_PER_LINE)
+        self.do_task = nidaqmx.Task()
+        self.do_task.do_channels.add_do_chan("fluor/port0/line0:1", line_grouping=LineGrouping.CHAN_PER_LINE)
 
     def read_voltage(self):
         voltages = []
@@ -45,6 +47,7 @@ class Fluorimeter:
 
     def determine_gain(self, avg_voltage):
             current_time = time.time()
+            new_gain = self.gain
             if current_time - self.last_gain_change >= self.gain_change_delay:
                 if avg_voltage < 0.15:
                     if self.gain == 1:
@@ -60,15 +63,16 @@ class Fluorimeter:
 
     def set_gain(self, avg_voltage):
         new_gain = self.determine_gain(avg_voltage)
+        current_time = time.time()
         if new_gain != self.gain:
             self.gain = new_gain
             self.last_gain_change = current_time
             if self.gain == 1:
-                self.task.write([False, False])
+                self.do_task.write([False, False])
             if self.gain == 10:
-                self.task.write([True, False])
+                self.do_task.write([True, False])
             if self.gain == 100:
-                self.task.write([False, True])
+                self.do_task.write([False, True])
             time.sleep(self.gain_change_delay)
     
 def main():
@@ -97,7 +101,7 @@ def main():
         print(f"Timestamp: {ts}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.2f}, Concentration: {concentration:.2f}")
         c.execute("INSERT INTO data VALUES (?, ?, ?, ?)", (timestamp, fluorimeter.gain, avg_voltage, concentration))
         conn.commit()
-        #new_gain = fluorimeter.set_gain(avg_voltage)
+        new_gain = fluorimeter.set_gain(avg_voltage)
 
     def run_rho(scheduler): 
         # schedule the next call first
