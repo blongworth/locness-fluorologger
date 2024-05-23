@@ -11,6 +11,19 @@ import sched, time
 import nidaqmx
 from nidaqmx.constants import AcquisitionType, TerminalConfiguration, LineGrouping
 import time
+from serial import Serial
+from pynmeagps import NMEAReader
+
+
+# need error handling
+def read_GPS(gps):
+    raw_data, parsed_data = gps.read()
+    if parsed_data is not None and parsed_data.msgID == 'GGA':
+        time = parsed_data.time
+        lat = parsed_data.lat
+        lon = parsed_data.lon
+        return time, lat, lon
+        
 
 # TODO: read voltage as HW timed burst
 
@@ -90,15 +103,17 @@ def main():
               (timestamp INTEGER, gain INTEGER, voltage REAL, concentration REAL)''')
 
     fluorimeter = Fluorimeter(slope, offset)
+    ser = Serial('COM3', 9600, timeout = 1)
+    gps = NMEAReader(ser)
 
-    #gps = GPSData()
     # Continuously get data and store it in the database
     def log_rho():
+        gps_time, lat, lon = read_GPS(gps)
         avg_voltage = fluorimeter.read_voltage()
         concentration = fluorimeter.convert_to_concentration(avg_voltage)
         timestamp = time.time()
         ts = datetime.fromtimestamp(timestamp)
-        print(f"Timestamp: {ts}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.2f}, Concentration: {concentration:.2f}")
+        print(f"Timestamp: {ts}, GPS time: {gps_time}, Lat: {lat}, Lon: {lon}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.2f}, Concentration: {concentration:.2f}")
         c.execute("INSERT INTO data VALUES (?, ?, ?, ?)", (timestamp, fluorimeter.gain, avg_voltage, concentration))
         conn.commit()
         new_gain = fluorimeter.set_gain(avg_voltage)
@@ -115,6 +130,7 @@ def main():
     # Clean up
     task.close()
     conn.close()
+    ser.close()
 
 if __name__ == "__main__":
     main()
