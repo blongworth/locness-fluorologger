@@ -16,13 +16,23 @@ from pynmeagps import NMEAReader
 
 
 # need error handling
-def read_GPS(gps):
-    raw_data, parsed_data = gps.read()
-    if parsed_data is not None and parsed_data.msgID == 'GGA':
-        time = parsed_data.time
-        lat = parsed_data.lat
-        lon = parsed_data.lon
-        return time, lat, lon
+def read_GPS():
+    with Serial('COM3', 9600, timeout=1) as stream:
+        nmr = NMEAReader(stream)
+        parsed_data = None
+        while parsed_data is None or parsed_data.msgID != 'GGA':
+            raw_data, parsed_data = nmr.read()
+        #print(parsed_data)
+        return parsed_data
+        #print(f"time: {parsed_data.time} lat: {parsed_data.lat:.5f} lon: {parsed_data.lon:.5f}")
+
+# def read_GPS(gps):
+#     raw_data, parsed_data = gps.read()
+#     if parsed_data is not None and parsed_data.msgID == 'GGA':
+#         time = parsed_data.time
+#         lat = parsed_data.lat
+#         lon = parsed_data.lon
+#         return time, lat, lon
         
 
 # TODO: read voltage as HW timed burst
@@ -100,21 +110,21 @@ def main():
     # Create a table to store the data
     # or append if it already exists
     c.execute('''CREATE TABLE IF NOT EXISTS data
-              (timestamp INTEGER, gain INTEGER, voltage REAL, concentration REAL)''')
+              (timestamp INTEGER, latitude REAL, longitude REAL, gain INTEGER, voltage REAL, concentration REAL)''')
 
     fluorimeter = Fluorimeter(slope, offset)
-    ser = Serial('COM3', 9600, timeout = 1)
-    gps = NMEAReader(ser)
+    #ser = Serial('COM3', 9600, timeout = 1)
+    #gps = NMEAReader(ser)
 
     # Continuously get data and store it in the database
     def log_rho():
-        gps_time, lat, lon = read_GPS(gps)
         avg_voltage = fluorimeter.read_voltage()
         concentration = fluorimeter.convert_to_concentration(avg_voltage)
+        gps = read_GPS()
         timestamp = time.time()
         ts = datetime.fromtimestamp(timestamp)
-        print(f"Timestamp: {ts}, GPS time: {gps_time}, Lat: {lat}, Lon: {lon}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.2f}, Concentration: {concentration:.2f}")
-        c.execute("INSERT INTO data VALUES (?, ?, ?, ?)", (timestamp, fluorimeter.gain, avg_voltage, concentration))
+        print(f"Timestamp: {ts}, GPS time: {gps.time}, Lat: {gps.lat:.5f}, Lon: {gps.lon:.5f}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.2f}, Concentration: {concentration:.2f}")
+        c.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)", (timestamp, gps.lat, gps.lon, fluorimeter.gain, avg_voltage, concentration))
         conn.commit()
         new_gain = fluorimeter.set_gain(avg_voltage)
 
