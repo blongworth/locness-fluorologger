@@ -3,8 +3,6 @@
 # get current data for GPS, fluormeter, and TSG
 # log to file and database
 
-# TODO: add position and time via NMEA serial stream
-
 import sqlite3
 from datetime import datetime
 import sched, time
@@ -14,10 +12,15 @@ import time
 from serial import Serial
 from pynmeagps import NMEAReader
 
+GPS_PORT = 'COM3'
+RHO_SLOPE = 81.47
+RHO_OFFSET_1X = 0.005
+RHO_OFFSET_10X = 0
+RHO_OFFSET_100X = 0
 
-# need error handling
-def read_GPS():
-    with Serial('COM3', 9600, timeout=1) as stream:
+# need error handling and handle no fix
+def read_GPS(port):
+    with Serial(port, 9600, timeout=1) as stream:
         nmr = NMEAReader(stream)
         parsed_data = None
         while parsed_data is None or parsed_data.msgID != 'GGA':
@@ -38,12 +41,15 @@ def read_GPS():
 # TODO: read voltage as HW timed burst
 
 class Fluorimeter:
-    def __init__(self, slope, offset):
+    def __init__(self, slope, offset_1x, offset_10x, offset_100x, autogain = True, gain = 1):
         self.slope = slope
-        self.offset = offset
+        self.offset_1x = offset_1x
+        self.offset_10x = offset_10x
+        self.offset_100x = offset_100x
+        self.autogain = autogain
         self.gain_change_delay = 3 # seconds to delay reading after gain change
         self.last_gain_change = time.time()
-        self.gain = 1
+        self.gain = gain
 
         # Connect to the DAQ device
         self.task = nidaqmx.Task()
@@ -65,10 +71,20 @@ class Fluorimeter:
         return avg_voltage
 
     def convert_to_concentration(self, voltage):
-        concentration = self.slope * voltage / self.gain + self.offset
+        if self.gain == 1:
+            offset = self.offset_1x
+        elif self.gain == 10:
+            offset = self.offset_10x
+        elif self.gain == 100:
+            offset = self.offset_100x
+            
+        concentration = self.slope * voltage / self.gain + offset
         return concentration
 
     def determine_gain(self, avg_voltage):
+           # if autogain disabled, use gain set at initialization
+            if not self.autogain:
+                return self.gain
             current_time = time.time()
             new_gain = self.gain
             if current_time - self.last_gain_change >= self.gain_change_delay:
@@ -99,9 +115,6 @@ class Fluorimeter:
             time.sleep(self.gain_change_delay)
     
 def main():
-    # Linear correction parameters
-    slope = 0.5  # Slope of the linear correction
-    offset = 0.2  # Offset of the linear correction
 
     # Connect to the SQLite database
     conn = sqlite3.connect('data.db')
@@ -112,7 +125,12 @@ def main():
     c.execute('''CREATE TABLE IF NOT EXISTS data
               (timestamp INTEGER, latitude REAL, longitude REAL, gain INTEGER, voltage REAL, concentration REAL)''')
 
-    fluorimeter = Fluorimeter(slope, offset)
+    fluorimeter = Fluorimeter(RHO_SLOPE, 
+                              RHO_OFFSET_1X, 
+                              RHO_OFFSET_10X, 
+                              RHO_OFFSET_100X, 
+                              autogain=False, gain=100)
+    
     #ser = Serial('COM3', 9600, timeout = 1)
     #gps = NMEAReader(ser)
 
@@ -120,10 +138,14 @@ def main():
     def log_rho():
         avg_voltage = fluorimeter.read_voltage()
         concentration = fluorimeter.convert_to_concentration(avg_voltage)
-        gps = read_GPS()
+        gps = read_GPS(GPS_PORT)
+        if gps is None:
+            gps.time = None
+            gps.lat = None
+            gps.lon = None
         timestamp = time.time()
         ts = datetime.fromtimestamp(timestamp)
-        print(f"Timestamp: {ts}, GPS time: {gps.time}, Lat: {gps.lat:.5f}, Lon: {gps.lon:.5f}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.2f}, Concentration: {concentration:.2f}")
+        print(f"Timestamp: {ts}, GPS time: {gps.time}, Lat: {gps.lat:.5f}, Lon: {gps.lon:.5f}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}")
         c.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)", (timestamp, gps.lat, gps.lon, fluorimeter.gain, avg_voltage, concentration))
         conn.commit()
         new_gain = fluorimeter.set_gain(avg_voltage)
