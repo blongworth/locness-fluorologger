@@ -58,6 +58,7 @@ class Fluorimeter:
         # Add digital output channels to the task - needs to be separate task
         self.do_task = nidaqmx.Task()
         self.do_task.do_channels.add_do_chan("fluor/port0/line0:1", line_grouping=LineGrouping.CHAN_PER_LINE)
+        self.do_task.start()
 
     def read_voltage(self):
         voltages = []
@@ -129,7 +130,7 @@ def main():
                               RHO_OFFSET_1X, 
                               RHO_OFFSET_10X, 
                               RHO_OFFSET_100X, 
-                              autogain=False, gain=100)
+                              autogain=True, gain=1)
     
     #ser = Serial('COM3', 9600, timeout = 1)
     #gps = NMEAReader(ser)
@@ -163,6 +164,7 @@ def main():
     except KeyboardInterrupt: 
         # Clean up
         fluorimeter.task.close()
+        fluorimeter.do_task.stop()
         fluorimeter.do_task.close()
         conn.close()
 
