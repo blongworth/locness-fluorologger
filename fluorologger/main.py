@@ -155,14 +155,20 @@ def main():
         scheduler.enter(1, 1, run_rho, (scheduler,))
         log_rho()
 
-    my_scheduler = sched.scheduler(time.time, time.sleep)
-    my_scheduler.enter(1, 1, run_rho, (my_scheduler,))
-    my_scheduler.run()
-        
-    # Clean up
-    task.close()
-    conn.close()
-    ser.close()
+    try:
+        my_scheduler = sched.scheduler(time.time, time.sleep)
+        my_scheduler.enter(1, 1, run_rho, (my_scheduler,))
+        my_scheduler.run()
+
+    except KeyboardInterrupt: 
+        # Clean up
+        fluorimeter.task.close()
+        fluorimeter.do_task.close()
+        conn.close()
+
+    finally:
+        print("Program terminated.")
+    
 
 if __name__ == "__main__":
     main()
