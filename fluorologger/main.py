@@ -14,9 +14,11 @@ from pynmeagps import NMEAReader
 
 GPS_PORT = 'COM3'
 RHO_SLOPE = 81.47
-RHO_OFFSET_1X = 0.005
-RHO_OFFSET_10X = 0
-RHO_OFFSET_100X = 0
+RHO_OFFSET_1X = 1.7
+RHO_OFFSET_10X = 0.350
+RHO_OFFSET_100X = .009
+AUTOGAIN = False
+GAIN = 10
 
 # need error handling and handle no fix
 def read_GPS(port):
@@ -59,6 +61,7 @@ class Fluorimeter:
         self.do_task = nidaqmx.Task()
         self.do_task.do_channels.add_do_chan("fluor/port0/line0:1", line_grouping=LineGrouping.CHAN_PER_LINE)
         self.do_task.start()
+        self.set_gain(self.gain)
 
     def read_voltage(self):
         voltages = []
@@ -101,18 +104,21 @@ class Fluorimeter:
                         new_gain = 1
             return new_gain
 
-    def set_gain(self, avg_voltage):
+    def set_gain(self, gain):
+        if gain == 1:
+            self.do_task.write([False, False])
+        if gain == 10:
+            self.do_task.write([True, False])
+        if gain == 100:
+            self.do_task.write([False, True])
+
+    def set_autogain(self, avg_voltage):
         new_gain = self.determine_gain(avg_voltage)
         current_time = time.time()
         if new_gain != self.gain:
             self.gain = new_gain
             self.last_gain_change = current_time
-            if self.gain == 1:
-                self.do_task.write([False, False])
-            if self.gain == 10:
-                self.do_task.write([True, False])
-            if self.gain == 100:
-                self.do_task.write([False, True])
+            self.set_gain(self.gain)
             time.sleep(self.gain_change_delay)
     
 def main():
@@ -130,7 +136,8 @@ def main():
                               RHO_OFFSET_1X, 
                               RHO_OFFSET_10X, 
                               RHO_OFFSET_100X, 
-                              autogain=True, gain=1)
+                              autogain=AUTOGAIN, 
+                              gain=GAIN)
     
     #ser = Serial('COM3', 9600, timeout = 1)
     #gps = NMEAReader(ser)
@@ -149,7 +156,7 @@ def main():
         print(f"Timestamp: {ts}, GPS time: {gps.time}, Lat: {gps.lat:.5f}, Lon: {gps.lon:.5f}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}")
         c.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)", (timestamp, gps.lat, gps.lon, fluorimeter.gain, avg_voltage, concentration))
         conn.commit()
-        new_gain = fluorimeter.set_gain(avg_voltage)
+        fluorimeter.set_autogain(avg_voltage)
 
     def run_rho(scheduler): 
         # schedule the next call first
