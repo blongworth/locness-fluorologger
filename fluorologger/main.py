@@ -55,22 +55,28 @@ class Fluorimeter:
 
         # Connect to the DAQ device
         self.task = nidaqmx.Task()
-        self.task.ai_channels.add_ai_voltage_chan("fluor/ai0", terminal_config=TerminalConfiguration.DIFF)
+        self.task.ai_channels.add_ai_voltage_chan("fluor/ai0",
+                                                  terminal_config=TerminalConfiguration.DIFF)
+        # Configure the timing
+        self.task.timing.cfg_samp_clk_timing(rate=1000, samps_per_chan=100)
         
-        # Add digital output channels to the task - needs to be separate task
+        
+        # Add digital output channels - needs to be separate task
         self.do_task = nidaqmx.Task()
-        self.do_task.do_channels.add_do_chan("fluor/port0/line0:1", line_grouping=LineGrouping.CHAN_PER_LINE)
+        self.do_task.do_channels.add_do_chan("fluor/port0/line0:1",
+                                             line_grouping=LineGrouping.CHAN_PER_LINE)
+        
+        # Start the tasks
+        self.task.start()
         self.do_task.start()
+
+        # Initial gain setting
         self.set_gain(self.gain)
 
     def read_voltage(self):
         voltages = []
-        start_time = time.time()
-        for i in range(50):
-            voltage = self.task.read()
-            voltages.append(voltage)
-            time.sleep(0.01)  # 50 readings per 0.5 second
-
+        # Read the data
+        voltages = task.read(number_of_samples_per_channel=100)
         avg_voltage = sum(voltages) / len(voltages)
         return avg_voltage
 
@@ -169,10 +175,13 @@ def main():
         my_scheduler.run()
 
     except KeyboardInterrupt: 
-        # Clean up
+        # Clean up daq tasks
+        fluorimeter.task.stop()
         fluorimeter.task.close()
         fluorimeter.do_task.stop()
         fluorimeter.do_task.close()
+
+        # Close the DB
         conn.close()
 
     finally:
