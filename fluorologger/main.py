@@ -13,12 +13,13 @@ from serial import Serial
 from pynmeagps import NMEAReader
 
 GPS_PORT = 'COM3'
-RHO_SLOPE = 81.47
-RHO_OFFSET_1X = 1.7
-RHO_OFFSET_10X = 0.350
-RHO_OFFSET_100X = .009
-AUTOGAIN = False
-GAIN = 100
+RHO_STD_V = .00539
+RHO_STD_C = 1
+RHO_ZERO_V_1X = -0.0079
+RHO_ZERO_V_10X = -0.0011
+RHO_ZERO_V_100X = 0.0690
+AUTOGAIN = True
+GAIN = 1
 
 # need error handling and handle no fix
 def read_GPS(port):
@@ -44,11 +45,12 @@ def read_GPS(port):
 # TODO: read voltage as HW timed burst
 
 class Fluorimeter:
-    def __init__(self, slope, offset_1x, offset_10x, offset_100x, autogain = True, gain = 1):
-        self.slope = slope
-        self.offset_1x = offset_1x
-        self.offset_10x = offset_10x
-        self.offset_100x = offset_100x
+    def __init__(self, std_v, std_c, zero_1x, zero_10x, zero_100x, autogain = True, gain = 1):
+        self.std_v = std_v
+        self.std_c = std_c
+        self.zero_1x = zero_1x
+        self.zero_10x = zero_10x
+        self.zero_100x = zero_100x
         self.autogain = autogain
         self.gain_change_delay = 3 # seconds to delay reading after gain change
         self.last_gain_change = time.time()
@@ -84,13 +86,13 @@ class Fluorimeter:
 
     def convert_to_concentration(self, voltage):
         if self.gain == 1:
-            offset = self.offset_1x
+            zero = self.zero_1x
         elif self.gain == 10:
-            offset = self.offset_10x
+            zero = self.zero_10x
         elif self.gain == 100:
-            offset = self.offset_100x
+            zero = self.zero_100x
             
-        concentration = self.slope * voltage / self.gain + offset
+        concentration = (self.std_c / (self.std_v - zero)) * (voltage / self.gain - zero)
         return concentration
 
     def determine_gain(self, avg_voltage):
@@ -140,10 +142,11 @@ def main():
     c.execute('''CREATE TABLE IF NOT EXISTS data
               (timestamp INTEGER, latitude REAL, longitude REAL, gain INTEGER, voltage REAL, concentration REAL)''')
 
-    fluorimeter = Fluorimeter(RHO_SLOPE, 
-                              RHO_OFFSET_1X, 
-                              RHO_OFFSET_10X, 
-                              RHO_OFFSET_100X, 
+    fluorimeter = Fluorimeter(RHO_STD_V,
+                              RHO_STD_C, 
+                              RHO_ZERO_V_1X, 
+                              RHO_ZERO_V_10X, 
+                              RHO_ZERO_V_100X, 
                               autogain=AUTOGAIN, 
                               gain=GAIN)
     
