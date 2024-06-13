@@ -18,19 +18,20 @@ RHO_OFFSET_1X = 1.7
 RHO_OFFSET_10X = 0.350
 RHO_OFFSET_100X = .009
 AUTOGAIN = False
-GAIN = 10
+GAIN = 100
 
 # need error handling and handle no fix
 def read_GPS(port):
-    with Serial(port, 9600, timeout=1) as stream:
-        nmr = NMEAReader(stream)
-        parsed_data = None
-        while parsed_data is None or parsed_data.msgID != 'GGA':
-            raw_data, parsed_data = nmr.read()
-        #print(parsed_data)
-        return parsed_data
-        #print(f"time: {parsed_data.time} lat: {parsed_data.lat:.5f} lon: {parsed_data.lon:.5f}")
-
+    try:
+        with Serial(port, 9600, timeout=1) as stream:
+            nmr = NMEAReader(stream)
+            parsed_data = None
+            while parsed_data is None or parsed_data.msgID != 'GGA':
+                raw_data, parsed_data = nmr.read()
+            return parsed_data
+    except:
+        print("GPS Error")
+        
 # def read_GPS(gps):
 #     raw_data, parsed_data = gps.read()
 #     if parsed_data is not None and parsed_data.msgID == 'GGA':
@@ -67,16 +68,17 @@ class Fluorimeter:
                                              line_grouping=LineGrouping.CHAN_PER_LINE)
         
         # Start the tasks
-        self.task.start()
         self.do_task.start()
 
         # Initial gain setting
         self.set_gain(self.gain)
 
     def read_voltage(self):
+        self.task.start()
         voltages = []
         # Read the data
-        voltages = task.read(number_of_samples_per_channel=100)
+        voltages = self.task.read(number_of_samples_per_channel=100)
+        self.task.stop()
         avg_voltage = sum(voltages) / len(voltages)
         return avg_voltage
 
@@ -112,11 +114,11 @@ class Fluorimeter:
 
     def set_gain(self, gain):
         if gain == 1:
-            self.do_task.write([False, False])
+            self.do_task.write([True, True])
         if gain == 10:
-            self.do_task.write([True, False])
-        if gain == 100:
             self.do_task.write([False, True])
+        if gain == 100:
+            self.do_task.write([True, False])
 
     def set_autogain(self, avg_voltage):
         new_gain = self.determine_gain(avg_voltage)
@@ -153,16 +155,21 @@ def main():
         avg_voltage = fluorimeter.read_voltage()
         concentration = fluorimeter.convert_to_concentration(avg_voltage)
         gps = read_GPS(GPS_PORT)
-        if gps is None:
-            gps.time = None
-            gps.lat = None
-            gps.lon = None
         timestamp = time.time()
         ts = datetime.fromtimestamp(timestamp)
-        print(f"Timestamp: {ts}, GPS time: {gps.time}, Lat: {gps.lat:.5f}, Lon: {gps.lon:.5f}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}")
-        c.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)", (timestamp, gps.lat, gps.lon, fluorimeter.gain, avg_voltage, concentration))
-        conn.commit()
-        fluorimeter.set_autogain(avg_voltage)
+        try:
+            print(f"Timestamp: {ts}, GPS time: {gps.time}, Lat: {gps.lat:.5f}, Lon: {gps.lon:.5f}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}")
+            c.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)", (timestamp, gps.lat, gps.lon, fluorimeter.gain, avg_voltage, concentration))
+        except ValueError:
+            print("GPS data error")
+            print(gps.time)
+            print(gps.lat)
+            print(gps.lon)
+            print(f"Timestamp: {ts}, GPS time: {gps.time}, Lat: {None}, Lon: {None}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}")
+            c.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)", (timestamp, None, None, fluorimeter.gain, avg_voltage, concentration))
+        finally:    
+            conn.commit()
+            fluorimeter.set_autogain(avg_voltage)
 
     def run_rho(scheduler): 
         # schedule the next call first
@@ -176,7 +183,6 @@ def main():
 
     except KeyboardInterrupt: 
         # Clean up daq tasks
-        fluorimeter.task.stop()
         fluorimeter.task.close()
         fluorimeter.do_task.stop()
         fluorimeter.do_task.close()
