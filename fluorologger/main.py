@@ -13,11 +13,12 @@ from serial import Serial
 from pynmeagps import NMEAReader
 
 GPS_PORT = 'COM3'
-RHO_STD_V = .00539
-RHO_STD_C = 1
-RHO_ZERO_V_1X = -0.0079
-RHO_ZERO_V_10X = -0.0011
-RHO_ZERO_V_100X = 0.0690
+RHO_SLOPE_1X = 2.30415E-1
+RHO_SLOPE_10X = 2.31214E-2
+RHO_SLOPE_100X = 2.3824E-3
+RHO_OFFSET_1X = -9.21659E-1
+RHO_OFFSET_10X = -2.31214E-1
+RHO_OFFSET_100X = -1.4532E-1
 AUTOGAIN = True
 GAIN = 1
 
@@ -45,12 +46,13 @@ def read_GPS(port):
 # TODO: read voltage as HW timed burst
 
 class Fluorimeter:
-    def __init__(self, std_v, std_c, zero_1x, zero_10x, zero_100x, autogain = True, gain = 1):
-        self.std_v = std_v
-        self.std_c = std_c
-        self.zero_1x = zero_1x
-        self.zero_10x = zero_10x
-        self.zero_100x = zero_100x
+    def __init__(self, slope_1x, slope_10x, slope_100x, offset_1x, offset_10x, offset_100x, autogain = True, gain = 1):
+        self.slope_1x = slope_1x
+        self.slope_10x = slope_10x
+        self.slope_100x = slope_100x
+        self.offset_1x = offset_1x
+        self.offset_10x = offset_10x
+        self.offset_100x = offset_100x
         self.autogain = autogain
         self.gain_change_delay = 3 # seconds to delay reading after gain change
         self.last_gain_change = time.time()
@@ -86,13 +88,12 @@ class Fluorimeter:
 
     def convert_to_concentration(self, voltage):
         if self.gain == 1:
-            zero = self.zero_1x
+            concentration = self.slope_1x * voltage * 1000 + self.offset_1x
         elif self.gain == 10:
-            zero = self.zero_10x
+            concentration = self.slope_10x * voltage * 1000 + self.offset_10x
         elif self.gain == 100:
-            zero = self.zero_100x
+            concentration = self.slope_100x * voltage * 1000 + self.offset_100x
             
-        concentration = (self.std_c / (self.std_v - zero)) * (voltage / self.gain - zero)
         return concentration
 
     def determine_gain(self, avg_voltage):
@@ -142,11 +143,12 @@ def main():
     c.execute('''CREATE TABLE IF NOT EXISTS data
               (timestamp INTEGER, latitude REAL, longitude REAL, gain INTEGER, voltage REAL, concentration REAL)''')
 
-    fluorimeter = Fluorimeter(RHO_STD_V,
-                              RHO_STD_C, 
-                              RHO_ZERO_V_1X, 
-                              RHO_ZERO_V_10X, 
-                              RHO_ZERO_V_100X, 
+    fluorimeter = Fluorimeter(RHO_SLOPE_1X,
+                              RHO_SLOPE_10X,
+                              RHO_SLOPE_100X, 
+                              RHO_OFFSET_1X, 
+                              RHO_OFFSET_10X,
+                              RHO_OFFSET_100X, 
                               autogain=AUTOGAIN, 
                               gain=GAIN)
     
