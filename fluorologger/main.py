@@ -22,7 +22,7 @@ RHO_OFFSET_100X = -1.4532E-1
 AUTOGAIN = True
 GAIN = 1
 
-# need error handling and handle no fix
+# Open serial port, read until NMEA GGA received and parse
 def read_GPS(port):
     try:
         with Serial(port, 9600, timeout=1) as stream:
@@ -34,17 +34,7 @@ def read_GPS(port):
     except:
         print("GPS Error")
         
-# def read_GPS(gps):
-#     raw_data, parsed_data = gps.read()
-#     if parsed_data is not None and parsed_data.msgID == 'GGA':
-#         time = parsed_data.time
-#         lat = parsed_data.lat
-#         lon = parsed_data.lon
-#         return time, lat, lon
-        
-
-# TODO: read voltage as HW timed burst
-
+# Fluorometer class. Handles fluorometer DAQ and data processing
 class Fluorimeter:
     def __init__(self, slope_1x, slope_10x, slope_100x, offset_1x, offset_10x, offset_100x, autogain = True, gain = 1):
         self.slope_1x = slope_1x
@@ -152,9 +142,6 @@ def main():
                               autogain=AUTOGAIN, 
                               gain=GAIN)
     
-    #ser = Serial('COM3', 9600, timeout = 1)
-    #gps = NMEAReader(ser)
-
     # Continuously get data and store it in the database
     def log_rho():
         avg_voltage = fluorimeter.read_voltage()
@@ -176,6 +163,7 @@ def main():
             conn.commit()
             fluorimeter.set_autogain(avg_voltage)
 
+    # schedule system to take a readings at 1hz
     def run_rho(scheduler): 
         # schedule the next call first
         scheduler.enter(1, 1, run_rho, (scheduler,))
