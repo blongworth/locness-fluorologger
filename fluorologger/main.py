@@ -152,13 +152,15 @@ def main():
         try:
             print(f"Timestamp: {ts}, GPS time: {gps.time}, Lat: {gps.lat:.5f}, Lon: {gps.lon:.5f}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}")
             c.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)", (timestamp, gps.lat, gps.lon, fluorimeter.gain, avg_voltage, concentration))
-        except ValueError:
+        except (AttributeError, ValueError) as e:
             print("GPS data error")
-            print(gps.time)
-            print(gps.lat)
-            print(gps.lon)
-            print(f"Timestamp: {ts}, GPS time: {gps.time}, Lat: {None}, Lon: {None}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}")
+            #print(gps.time)
+            #print(gps.lat)
+            #print(gps.lon)
+            print(f"Timestamp: {ts}, GPS time: {None}, Lat: {None}, Lon: {None}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}")
             c.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)", (timestamp, None, None, fluorimeter.gain, avg_voltage, concentration))
+        except:
+            print("Data error, skipping cycle")
         finally:    
             conn.commit()
             fluorimeter.set_autogain(avg_voltage)
