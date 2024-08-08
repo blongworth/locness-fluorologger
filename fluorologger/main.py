@@ -11,6 +11,8 @@ from nidaqmx.constants import AcquisitionType, TerminalConfiguration, LineGroupi
 import time
 from serial import Serial
 from pynmeagps import NMEAReader
+import os
+import csv
 
 GPS_PORT = 'COM10'
 RHO_SLOPE_1X = 2.30415E-1
@@ -21,6 +23,9 @@ RHO_OFFSET_10X = -2.31214E-1
 RHO_OFFSET_100X = -1.4532E-1
 AUTOGAIN = True
 GAIN = 1
+LOGFILE = 'C:/Users/CSL 2/Documents/LOCNESS_data/fluorometer_data.csv'  # Name of the CSV file
+DB_PATH = 'C:/Users/CSL 2/Documents/LOCNESS_data/data.db' # Path to SQLite DB
+    
 
 # Open serial port, read until NMEA GGA received and parse
 def read_GPS(port):
@@ -122,10 +127,22 @@ class Fluorimeter:
             self.set_gain(self.gain)
             time.sleep(self.gain_change_delay)
     
+def log_data(filename, data):
+    file_exists = os.path.isfile(filename)
+    
+    with open(filename, 'a', newline='') as csvfile:
+        csvwriter = csv.writer(csvfile)
+        
+        if not file_exists:
+            # Write header if file doesn't exist
+            csvwriter.writerow(['timestamp', 'latitude', 'longitude', 'gain', 'voltage', 'concentration'])
+        
+        csvwriter.writerow(data)
+
 def main():
 
-    # Connect to the SQLite database
-    conn = sqlite3.connect('data.db')
+    # Connect to the SQLite database 
+    conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
 
     # Create a table to store the data
@@ -149,6 +166,8 @@ def main():
         gps = read_GPS(GPS_PORT)
         timestamp = time.time()
         ts = datetime.fromtimestamp(timestamp)
+        data_list = [ ts, gps.lat, gps.lon, fluorimeter.gain, avg_voltage, concentration ]
+        log_data(LOGFILE, data_list)
         try:
             print(f"Timestamp: {ts}, GPS time: {gps.time}, Lat: {gps.lat:.5f}, Lon: {gps.lon:.5f}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}")
             c.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)", (timestamp, gps.lat, gps.lon, fluorimeter.gain, avg_voltage, concentration))
