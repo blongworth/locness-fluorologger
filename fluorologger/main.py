@@ -12,7 +12,7 @@ import time
 from serial import Serial
 from pynmeagps import NMEAReader
 
-GPS_PORT = 'COM3'
+GPS_PORT = 'COM10'
 RHO_SLOPE_1X = 2.30415E-1
 RHO_SLOPE_10X = 2.31214E-2
 RHO_SLOPE_100X = 2.3824E-3
