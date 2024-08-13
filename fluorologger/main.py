@@ -14,21 +14,31 @@ from pynmeagps import NMEAReader
 import os
 import csv
 
+READ_TIME = 1 # time between fluorometer/GPS readings
 GPS_PORT = 'COM10'
+
+# Fluorometer calibration
 RHO_SLOPE_1X = 2.30415E-1
 RHO_SLOPE_10X = 2.31214E-2
 RHO_SLOPE_100X = 2.3824E-3
 RHO_OFFSET_1X = -9.21659E-1
 RHO_OFFSET_10X = -2.31214E-1
 RHO_OFFSET_100X = -1.4532E-1
+
+# Fluorometer gain
 AUTOGAIN = True
 GAIN = 1
+
+# Output files
 LOGFILE = 'C:/Users/CSL 2/Documents/LOCNESS_data/fluorometer_data.csv'  # Name of the CSV file
 DB_PATH = 'C:/Users/CSL 2/Documents/LOCNESS_data/data.db' # Path to SQLite DB
-    
 
-# Open serial port, read until NMEA GGA received and parse
 def read_GPS(port):
+    '''
+    Open serial port, read until NMEA GGA received and parse
+
+    Returns a NMEAReader parsed GGA data object
+    '''
     try:
         with Serial(port, 9600, timeout=1) as stream:
             nmr = NMEAReader(stream)
@@ -39,8 +49,8 @@ def read_GPS(port):
     except:
         print("GPS Error")
         
-# Fluorometer class. Handles fluorometer DAQ and data processing
 class Fluorimeter:
+    '''Fluorometer class. Handles fluorometer DAQ and data processing'''
     def __init__(self, slope_1x, slope_10x, slope_100x, offset_1x, offset_10x, offset_100x, autogain = True, gain = 1):
         self.slope_1x = slope_1x
         self.slope_10x = slope_10x
@@ -60,8 +70,7 @@ class Fluorimeter:
         # Configure the timing
         self.task.timing.cfg_samp_clk_timing(rate=1000, samps_per_chan=100)
         
-        
-        # Add digital output channels - needs to be separate task
+        # Add digital output channels
         self.do_task = nidaqmx.Task()
         self.do_task.do_channels.add_do_chan("fluor/port0/line0:1",
                                              line_grouping=LineGrouping.CHAN_PER_LINE)
@@ -73,6 +82,11 @@ class Fluorimeter:
         self.set_gain(self.gain)
 
     def read_voltage(self):
+        '''
+        Run a task that reads 100 voltage samples at 1kHz
+        
+        Returns average voltage
+        '''
         self.task.start()
         voltages = []
         # Read the data
@@ -173,9 +187,6 @@ def main():
             c.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)", (timestamp, gps.lat, gps.lon, fluorimeter.gain, avg_voltage, concentration))
         except (AttributeError, ValueError) as e:
             print("GPS data error")
-            #print(gps.time)
-            #print(gps.lat)
-            #print(gps.lon)
             print(f"Timestamp: {ts}, GPS time: {None}, Lat: {None}, Lon: {None}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}")
             c.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)", (timestamp, None, None, fluorimeter.gain, avg_voltage, concentration))
         except:
@@ -192,7 +203,7 @@ def main():
 
     try:
         my_scheduler = sched.scheduler(time.time, time.sleep)
-        my_scheduler.enter(1, 1, run_rho, (my_scheduler,))
+        my_scheduler.enter(READ_TIME, 1, run_rho, (my_scheduler,))
         my_scheduler.run()
 
     except KeyboardInterrupt: 
@@ -206,7 +217,6 @@ def main():
 
     finally:
         print("Program terminated.")
-    
 
 if __name__ == "__main__":
     main()
