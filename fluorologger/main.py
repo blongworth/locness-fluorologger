@@ -39,15 +39,12 @@ def read_GPS(port):
 
     Returns a NMEAReader parsed GGA data object
     '''
-    try:
-        with Serial(port, 9600, timeout=1) as stream:
-            nmr = NMEAReader(stream)
-            parsed_data = None
-            while parsed_data is None or parsed_data.msgID != 'GGA':
-                raw_data, parsed_data = nmr.read()
-            return parsed_data
-    except:
-        print("GPS Error")
+    with Serial(port, 9600, timeout=1) as stream:
+        nmr = NMEAReader(stream)
+        parsed_data = None
+        while parsed_data is None or parsed_data.msgID != 'GGA':
+            raw_data, parsed_data = nmr.read()
+        return parsed_data
         
 class Fluorimeter:
     '''Fluorometer class. Handles fluorometer DAQ and data processing'''
