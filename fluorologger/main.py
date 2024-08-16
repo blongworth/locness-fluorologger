@@ -62,7 +62,7 @@ def read_GPS(port):
         return parsed_data
 
 
-class Fluorimeter:
+class Fluorometer:
     """Fluorometer class. Handles fluorometer DAQ and data processing"""
 
     def __init__(
@@ -207,7 +207,7 @@ def main():
                concentration REAL)
               """)
 
-    fluorimeter = Fluorimeter(
+    fluorometer = Fluorometer(
         RHO_SLOPE_1X,
         RHO_SLOPE_10X,
         RHO_SLOPE_100X,
@@ -222,16 +222,16 @@ def main():
         """
         Continuously get data and store it in the database and file
         """
-        avg_voltage = fluorimeter.read_voltage()
-        concentration = fluorimeter.convert_to_concentration(avg_voltage)
+        avg_voltage = fluorometer.read_voltage()
+        concentration = fluorometer.convert_to_concentration(avg_voltage)
         gps = read_GPS(GPS_PORT)
         timestamp = time.time()
         ts = datetime.fromtimestamp(timestamp)
-        data_list = [ts, gps.lat, gps.lon, fluorimeter.gain, avg_voltage, concentration]
+        data_list = [ts, gps.lat, gps.lon, fluorometer.gain, avg_voltage, concentration]
         log_data(DATAFILE, data_list)
         try:
             logger.info(
-                f"Timestamp: {ts}, GPS time: {gps.time}, Lat: {gps.lat:.5f}, Lon: {gps.lon:.5f}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}"
+                f"Timestamp: {ts}, GPS time: {gps.time}, Lat: {gps.lat:.5f}, Lon: {gps.lon:.5f}, Gain: {fluorometer.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}"
             )
             c.execute(
                 "INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)",
@@ -239,7 +239,7 @@ def main():
                     timestamp,
                     gps.lat,
                     gps.lon,
-                    fluorimeter.gain,
+                    fluorometer.gain,
                     avg_voltage,
                     concentration,
                 ),
@@ -247,17 +247,17 @@ def main():
         except (AttributeError, ValueError) as e:
             logger.error(f"GPS data error: {e}")
             logger.info(
-                f"Timestamp: {ts}, GPS time: {None}, Lat: {None}, Lon: {None}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}"
+                f"Timestamp: {ts}, GPS time: {None}, Lat: {None}, Lon: {None}, Gain: {fluorometer.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}"
             )
             c.execute(
                 "INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)",
-                (timestamp, None, None, fluorimeter.gain, avg_voltage, concentration),
+                (timestamp, None, None, fluorometer.gain, avg_voltage, concentration),
             )
         except:  # Shouldn't have bare except. How to catch all errors and allow program to continue?
             logger.error("Data error, skipping cycle")
         finally:
             conn.commit()
-            fluorimeter.set_autogain(avg_voltage)
+            fluorometer.set_autogain(avg_voltage)
 
     def run_rho(scheduler):
         """
@@ -267,15 +267,15 @@ def main():
         log_rho()
 
     try:
-        s = sched.scheduler(time.time, time.sleep)
-        s.enter(READ_TIME, 1, run_rho, (s,))
-        s.run()
+        my_scheduler = sched.scheduler(time.time, time.sleep)
+        my_scheduler.enter(READ_TIME, 1, run_rho, (my_scheduler,))
+        my_scheduler.run()
 
     except KeyboardInterrupt:
         # Clean up daq tasks
-        fluorimeter.task.close()
-        fluorimeter.do_task.stop()
-        fluorimeter.do_task.close()
+        fluorometer.task.close()
+        fluorometer.do_task.stop()
+        fluorometer.do_task.close()
 
         # Close the DB
         conn.close()
