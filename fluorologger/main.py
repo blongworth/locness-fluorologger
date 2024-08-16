@@ -13,25 +13,26 @@ from serial import Serial
 from pynmeagps import NMEAReader
 import os
 import csv
+import yaml
 
-READ_TIME = 1 # time between fluorometer/GPS readings
-GPS_PORT = 'COM10'
+# Read the configuration file
+with open('config.yaml', 'r') as file:
+    config = yaml.safe_load(file)
 
-# Fluorometer calibration
-RHO_SLOPE_1X = 2.30415E-1
-RHO_SLOPE_10X = 2.31214E-2
-RHO_SLOPE_100X = 2.3824E-3
-RHO_OFFSET_1X = -9.21659E-1
-RHO_OFFSET_10X = -2.31214E-1
-RHO_OFFSET_100X = -1.4532E-1
-
-# Fluorometer gain
-AUTOGAIN = True
-GAIN = 1
-
-# Output files
-LOGFILE = 'C:/Users/CSL 2/Documents/LOCNESS_data/fluorometer_data.csv'  # Name of the CSV file
-DB_PATH = 'C:/Users/CSL 2/Documents/LOCNESS_data/data.db' # Path to SQLite DB
+# Access configuration values
+READ_TIME = config['read_time']
+GPS_PORT = config['gps_port']
+RHO_SLOPE_1X = config['cal']['slope_1x']
+RHO_SLOPE_10X = config['cal']['slope_10x']
+RHO_SLOPE_100X = config['cal']['slope_100x']
+RHO_OFFSET_1X = config['cal']['offset_1x']
+RHO_OFFSET_10X = config['cal']['offset_10x']
+RHO_OFFSET_100X = config['cal']['offset_100x']
+AUTOGAIN = config['gain']['auto']
+GAIN = config['gain']['gain']
+LOGFILE = config['file']['log']
+DATAFILE = config['file']['data']
+DB_PATH = config['file']['db']
 
 def read_GPS(port):
     '''
@@ -178,7 +179,7 @@ def main():
         timestamp = time.time()
         ts = datetime.fromtimestamp(timestamp)
         data_list = [ ts, gps.lat, gps.lon, fluorimeter.gain, avg_voltage, concentration ]
-        log_data(LOGFILE, data_list)
+        log_data(DATAFILE, data_list)
         try:
             print(f"Timestamp: {ts}, GPS time: {gps.time}, Lat: {gps.lat:.5f}, Lon: {gps.lon:.5f}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}")
             c.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)", (timestamp, gps.lat, gps.lon, fluorimeter.gain, avg_voltage, concentration))
