@@ -14,6 +14,7 @@ from pynmeagps import NMEAReader
 import os
 import csv
 import yaml
+import logging
 
 # Read the configuration file
 with open('config.yaml', 'r') as file:
@@ -33,6 +34,21 @@ GAIN = config['gain']['gain']
 LOGFILE = config['file']['log']
 DATAFILE = config['file']['data']
 DB_PATH = config['file']['db']
+
+# Configure logging
+logging.basicConfig(
+    # filename=LOGFILE,
+    level=logging.INFO,
+    format='%(asctime)s - %(levelname)s - %(message)s',
+    datefmt='%Y-%m-%dT%H:%M:%S%z',
+     handlers=[
+        logging.FileHandler(LOGFILE),
+        logging.StreamHandler()
+    ]
+)
+
+# Start logger
+logger = logging.getLogger(__name__)
 
 def read_GPS(port):
     '''
@@ -181,14 +197,14 @@ def main():
         data_list = [ ts, gps.lat, gps.lon, fluorimeter.gain, avg_voltage, concentration ]
         log_data(DATAFILE, data_list)
         try:
-            print(f"Timestamp: {ts}, GPS time: {gps.time}, Lat: {gps.lat:.5f}, Lon: {gps.lon:.5f}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}")
+            logger.info(f"Timestamp: {ts}, GPS time: {gps.time}, Lat: {gps.lat:.5f}, Lon: {gps.lon:.5f}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}")
             c.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)", (timestamp, gps.lat, gps.lon, fluorimeter.gain, avg_voltage, concentration))
         except (AttributeError, ValueError) as e:
-            print("GPS data error")
-            print(f"Timestamp: {ts}, GPS time: {None}, Lat: {None}, Lon: {None}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}")
+            logger.error("GPS data error")
+            logger.info(f"Timestamp: {ts}, GPS time: {None}, Lat: {None}, Lon: {None}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}")
             c.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)", (timestamp, None, None, fluorimeter.gain, avg_voltage, concentration))
         except:
-            print("Data error, skipping cycle")
+            logger.error("Data error, skipping cycle")
         finally:    
             conn.commit()
             fluorimeter.set_autogain(avg_voltage)
@@ -214,7 +230,7 @@ def main():
         conn.close()
 
     finally:
-        print("Program terminated.")
+        logger.info("Program terminated.")
 
 if __name__ == "__main__":
     main()
