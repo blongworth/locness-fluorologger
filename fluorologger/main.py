@@ -267,9 +267,9 @@ def main():
         log_rho()
 
     try:
-        my_scheduler = sched.scheduler(time.time, time.sleep)
-        my_scheduler.enter(READ_TIME, 1, run_rho, (my_scheduler,))
-        my_scheduler.run()
+        s = sched.scheduler(time.time, time.sleep)
+        s.enter(READ_TIME, 1, run_rho, (s,))
+        s.run()
 
     except KeyboardInterrupt:
         # Clean up daq tasks
