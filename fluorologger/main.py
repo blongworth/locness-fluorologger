@@ -5,10 +5,10 @@
 
 import sqlite3
 from datetime import datetime
-import sched, time
-import nidaqmx
-from nidaqmx.constants import AcquisitionType, TerminalConfiguration, LineGrouping
+import sched
 import time
+import nidaqmx
+from nidaqmx.constants import TerminalConfiguration, LineGrouping
 from serial import Serial
 from pynmeagps import NMEAReader
 import os
@@ -187,8 +187,10 @@ def main():
                               autogain=AUTOGAIN, 
                               gain=GAIN)
     
-    # Continuously get data and store it in the database
     def log_rho():
+        """
+        Continuously get data and store it in the database and file
+        """
         avg_voltage = fluorimeter.read_voltage()
         concentration = fluorimeter.convert_to_concentration(avg_voltage)
         gps = read_GPS(GPS_PORT)
@@ -200,18 +202,19 @@ def main():
             logger.info(f"Timestamp: {ts}, GPS time: {gps.time}, Lat: {gps.lat:.5f}, Lon: {gps.lon:.5f}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}")
             c.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)", (timestamp, gps.lat, gps.lon, fluorimeter.gain, avg_voltage, concentration))
         except (AttributeError, ValueError) as e:
-            logger.error("GPS data error")
+            logger.error(f"GPS data error: {e}")
             logger.info(f"Timestamp: {ts}, GPS time: {None}, Lat: {None}, Lon: {None}, Gain: {fluorimeter.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}")
             c.execute("INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)", (timestamp, None, None, fluorimeter.gain, avg_voltage, concentration))
-        except:
+        except: # Shouldn't have bare except. How to catch all errors and allow program to continue?
             logger.error("Data error, skipping cycle")
         finally:    
             conn.commit()
             fluorimeter.set_autogain(avg_voltage)
 
-    # schedule system to take a readings at 1hz
     def run_rho(scheduler): 
-        # schedule the next call first
+        """
+        Schedule system to take a readings at 1hz
+        """
         scheduler.enter(1, 1, run_rho, (scheduler,))
         log_rho()
 
