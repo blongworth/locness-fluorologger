@@ -12,7 +12,7 @@ GPS and fluorometer data are logged to a file and a SQLite3 database.
 
 if using uv for project/dependency management:
 
-* Run the main fluorometer program `uv run main.py`
+* Run the main fluorometer program `uv run fluorologger`
 
 If using venv/pip:
 
