@@ -52,14 +52,18 @@ def read_GPS(port):
     """
     Open serial port, read until NMEA GGA received and parse
 
-    Returns a NMEAReader parsed GGA data object
+    Returns a NMEAReader parsed GGA data object, or None if connection fails
     """
-    with Serial(port, 9600, timeout=1) as stream:
-        nmr = NMEAReader(stream)
-        parsed_data = None
-        while parsed_data is None or parsed_data.msgID != "GGA":
-            raw_data, parsed_data = nmr.read()
-        return parsed_data
+    try:
+        with Serial(port, 9600, timeout=1) as stream:
+            nmr = NMEAReader(stream)
+            parsed_data = None
+            while parsed_data is None or parsed_data.msgID != "GGA":
+                raw_data, parsed_data = nmr.read()
+            return parsed_data
+    except Exception as e:
+        logger.error(f"Failed to open GPS port {port}: {e}")
+        return None
 
 
 class Fluorometer:
@@ -227,18 +231,26 @@ def main():
         gps = read_GPS(GPS_PORT)
         timestamp = time.time()
         ts = datetime.fromtimestamp(timestamp)
-        data_list = [ts, gps.lat, gps.lon, fluorometer.gain, avg_voltage, concentration]
+        if gps is not None:
+            lat = gps.lat
+            lon = gps.lon
+            gps_time = getattr(gps, 'time', None)
+        else:
+            lat = None
+            lon = None
+            gps_time = None
+        data_list = [ts, lat, lon, fluorometer.gain, avg_voltage, concentration]
         log_data(DATAFILE, data_list)
         try:
             logger.info(
-                f"Timestamp: {ts}, GPS time: {gps.time}, Lat: {gps.lat:.5f}, Lon: {gps.lon:.5f}, Gain: {fluorometer.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}"
+                f"Timestamp: {ts}, GPS time: {gps_time}, Lat: {lat}, Lon: {lon}, Gain: {fluorometer.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}"
             )
             c.execute(
                 "INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)",
                 (
                     timestamp,
-                    gps.lat,
-                    gps.lon,
+                    lat,
+                    lon,
                     fluorometer.gain,
                     avg_voltage,
                     concentration,
