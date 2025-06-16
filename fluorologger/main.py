@@ -265,8 +265,8 @@ def main():
                 "INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)",
                 (timestamp, None, None, fluorometer.gain, avg_voltage, concentration),
             )
-        except:  # Shouldn't have bare except. How to catch all errors and allow program to continue?
-            logger.error("Data error, skipping cycle")
+        except Exception as e:
+            logger.error(f"Error, skipping cycle: {e}", exc_info=True)
         finally:
             conn.commit()
             fluorometer.set_autogain(avg_voltage)
