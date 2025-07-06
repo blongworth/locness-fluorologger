@@ -3,18 +3,20 @@
 # get current data for GPS, fluormeter, and TSG
 # log to file and database
 
-import sqlite3
-from datetime import datetime
+import csv
+import logging
+import os
 import sched
+import sqlite3
+import sys
 import time
+from datetime import datetime
+
 import nidaqmx
 from nidaqmx.constants import TerminalConfiguration, LineGrouping
-from serial import Serial
 from pynmeagps import NMEAReader
-import os
-import csv
+from serial import Serial
 import yaml
-import logging
 
 # Read the configuration file
 with open("config.yaml", "r") as file:
@@ -193,23 +195,23 @@ def log_data(filename, data):
 
         csvwriter.writerow(data)
 
+def ensure_database_ready(db_path):
+    """Quick check that database is properly initialized"""
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        conn.execute('SELECT 1 FROM fluorometer LIMIT 1')
+        conn.close()
+        return True
+    except sqlite3.OperationalError:
+        return False
 
 def main():
     # Connect to the SQLite database
+    if not ensure_database_ready(DB_PATH):
+        print("Database not initialized. Set up with locness-datamanager first.")
+        sys.exit(1)
     conn = sqlite3.connect(DB_PATH)
     c = conn.cursor()
-
-    # Create a table to store the data
-    # or append if it already exists
-    c.execute("""
-              CREATE TABLE IF NOT EXISTS data
-              (timestamp INTEGER, 
-               latitude REAL, 
-               longitude REAL, 
-               gain INTEGER, 
-               voltage REAL, 
-               concentration REAL)
-              """)
 
     fluorometer = Fluorometer(
         RHO_SLOPE_1X,
