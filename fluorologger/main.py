@@ -22,7 +22,7 @@ with open("config.yaml", "r") as file:
 
 # Access configuration values
 READ_TIME = config["read_time"]
-GPS_PORT = config["gps_port"]
+GPS_PORT = config.get("gps_port", None)  # Use None if not defined
 RHO_SLOPE_1X = config["cal"]["slope_1x"]
 RHO_SLOPE_10X = config["cal"]["slope_10x"]
 RHO_SLOPE_100X = config["cal"]["slope_100x"]
@@ -211,6 +211,12 @@ def main():
                concentration REAL)
               """)
 
+    # Log GPS status
+    if GPS_PORT is not None:
+        logger.info(f"GPS enabled on port {GPS_PORT}")
+    else:
+        logger.info("GPS disabled - no GPS port configured")
+
     fluorometer = Fluorometer(
         RHO_SLOPE_1X,
         RHO_SLOPE_10X,
@@ -228,7 +234,13 @@ def main():
         """
         avg_voltage = fluorometer.read_voltage()
         concentration = fluorometer.convert_to_concentration(avg_voltage)
-        gps = read_GPS(GPS_PORT)
+        
+        # Only acquire GPS data if GPS_PORT is defined
+        if GPS_PORT is not None:
+            gps = read_GPS(GPS_PORT)
+        else:
+            gps = None
+            
         timestamp = time.time()
         ts = datetime.fromtimestamp(timestamp)
         if gps is not None:
