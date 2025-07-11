@@ -287,9 +287,9 @@ def main():
 
     def run_rho(scheduler):
         """
-        Schedule system to take a readings at 1hz
+        Schedule system to take a readings every READ_TIME seconds
         """
-        scheduler.enter(1, 1, run_rho, (scheduler,))
+        scheduler.enter(READ_TIME, 1, run_rho, (scheduler,))
         log_rho()
 
     try:
