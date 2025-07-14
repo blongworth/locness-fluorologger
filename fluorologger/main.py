@@ -14,8 +14,7 @@ from datetime import datetime
 
 import nidaqmx
 from nidaqmx.constants import TerminalConfiguration, LineGrouping
-from pynmeagps import NMEAReader
-from serial import Serial
+from fluorologger.gps import read_GPS
 import yaml
 
 # Read the configuration file
@@ -35,7 +34,8 @@ AUTOGAIN = config["gain"]["auto"]
 GAIN = config["gain"]["gain"]
 LOGFILE = config["file"]["log"]
 DATAFILE = config["file"]["data"]
-DB_PATH = config["file"]["db"]
+DB_PATH = config["db"]["filename"]
+DB_TABLE = config["db"]["table"]
 
 # Configure logging
 logging.basicConfig(
@@ -46,26 +46,9 @@ logging.basicConfig(
     handlers=[logging.FileHandler(LOGFILE), logging.StreamHandler()],
 )
 
+
 # Start logger
 logger = logging.getLogger(__name__)
-
-
-def read_GPS(port):
-    """
-    Open serial port, read until NMEA GGA received and parse
-
-    Returns a NMEAReader parsed GGA data object, or None if connection fails
-    """
-    try:
-        with Serial(port, 9600, timeout=1) as stream:
-            nmr = NMEAReader(stream)
-            parsed_data = None
-            while parsed_data is None or parsed_data.msgID != "GGA":
-                raw_data, parsed_data = nmr.read()
-            return parsed_data
-    except Exception as e:
-        logger.error(f"Failed to open GPS port {port}: {e}")
-        return None
 
 
 class Fluorometer:
@@ -199,7 +182,7 @@ def ensure_database_ready(db_path):
     """Quick check that database is properly initialized"""
     try:
         conn = sqlite3.connect(DB_PATH)
-        conn.execute('SELECT 1 FROM fluorometer LIMIT 1')
+        conn.execute(f'SELECT 1 FROM {DB_TABLE} LIMIT 1')
         conn.close()
         return True
     except sqlite3.OperationalError:
@@ -260,7 +243,7 @@ def main():
                 f"Timestamp: {ts}, GPS time: {gps_time}, Lat: {lat}, Lon: {lon}, Gain: {fluorometer.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}"
             )
             c.execute(
-                "INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)",
+                f"INSERT INTO {DB_TABLE} VALUES (?, ?, ?, ?, ?, ?)",
                 (
                     timestamp,
                     lat,
@@ -276,7 +259,7 @@ def main():
                 f"Timestamp: {ts}, GPS time: {None}, Lat: {None}, Lon: {None}, Gain: {fluorometer.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}"
             )
             c.execute(
-                "INSERT INTO data VALUES (?, ?, ?, ?, ?, ?)",
+                f"INSERT INTO {DB_TABLE} VALUES (?, ?, ?, ?, ?, ?)",
                 (timestamp, None, None, fluorometer.gain, avg_voltage, concentration),
             )
         except Exception as e:

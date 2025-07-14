@@ -34,8 +34,8 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "nidaqmx", specifier = "==0.9.0" },
-    { name = "numpy", specifier = "==1.26.4" },
-    { name = "pynmeagps", specifier = "==1.0.36" },
+    { name = "numpy", specifier = ">=1.26.4" },
+    { name = "pynmeagps", specifier = ">=1.0.50" },
     { name = "pyserial", specifier = "==3.5" },
     { name = "pyyaml", specifier = "==6.0.2" },
 ]
@@ -97,11 +97,11 @@ wheels = [
 
 [[package]]
 name = "pynmeagps"
-version = "1.0.36"
+version = "1.0.50"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/5b/4f/c0739a141b4868b3b3f2acd52038e2e721d37c86b2b43222c664db1f7932/pynmeagps-1.0.36.tar.gz", hash = "sha256:3bad8b7605e7808a358b68d743ea854eb390ee704115f4ce9b12fc2518de2c17", size = 52931, upload-time = "2024-05-09T06:36:08.932Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/8d/d3/dc24ed8a0e429105b20bfbf5d8155659d4f1439bad203ad46a9cdd1fc9d0/pynmeagps-1.0.50.tar.gz", hash = "sha256:7ebefbe697fa71c939df176631674c15879863c0362af21f062bc9ff352ad246", size = 76539, upload-time = "2025-05-06T06:43:56.547Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/24/5d/b16d3f45989344373cdf6ce14f9e56a0f46f46513df8b66b780d679f81ee/pynmeagps-1.0.36-py3-none-any.whl", hash = "sha256:f43d4dcd7ded342e8c05b7c220669e20786cd4d91fe86ca3f5f1c01d354ddbe3", size = 35495, upload-time = "2024-05-09T06:36:06.77Z" },
+    { url = "https://files.pythonhosted.org/packages/e4/5f/15afebad449cfe563e8d1e5dfe2c307abbecdff34dbc6d0e4c8d453741b5/pynmeagps-1.0.50-py3-none-any.whl", hash = "sha256:24f6389f77f9d5f583bc677f141d7e7a76d48abb9a3a968dab26f77efe59fb1e", size = 52951, upload-time = "2025-05-06T06:43:54.679Z" },
 ]
 
 [[package]]

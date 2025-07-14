@@ -22,7 +22,10 @@ gain:
 file:
   log: fluorometer.log
   data: fluorometer.csv
-  db: fluorometer.db
   #log: C:/Users/CSL 2/Documents/LOCNESS_data/underway.log
   #data: C:/Users/CSL 2/Documents/LOCNESS_data/fluorometer.csv
-  #db: C:/Users/CSL 2/Documents/LOCNESS_data/underway.db
+
+# Database settings
+db:
+  filename: fluorometer.db
+  table: fluorometer_data
