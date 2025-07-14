@@ -156,7 +156,6 @@ class Fluorometer:
             self.set_gain(self.gain)
             time.sleep(self.gain_change_delay)
 
-
 def log_data(filename, data):
     file_exists = os.path.isfile(filename)
 
@@ -250,6 +249,8 @@ def main():
             logger.info(
                 f"Timestamp: {ts}, Gain: {fluorometer.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}"
             )
+            data_list = [ts, lat, lon, fluorometer.gain, avg_voltage, concentration]
+            log_data(DATAFILE, data_list)
             c.execute(
                 f"INSERT INTO {RHO_TABLE} (datetime_utc, gain, voltage, rho_ppb) VALUES (?, ?, ?, ?)",
                 (timestamp, fluorometer.gain, avg_voltage, concentration)
