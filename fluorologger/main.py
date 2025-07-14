@@ -35,7 +35,7 @@ GAIN = config["gain"]["gain"]
 LOGFILE = config["file"]["log"]
 DATAFILE = config["file"]["data"]
 DB_PATH = config["db"]["filename"]
-DB_TABLE = config["db"]["table"]
+RHO_TABLE = config["db"]["table"]
 
 # Configure logging
 logging.basicConfig(
@@ -232,38 +232,30 @@ def main():
             lat = gps.lat
             lon = gps.lon
             gps_time = getattr(gps, 'time', None)
+            # Write GPS data to 'gps' table
+            try:
+                c.execute(
+                    "INSERT INTO gps (datetime_utc, nmea_time, latitude, longitude) VALUES (?, ?, ?, ?)",
+                    (timestamp, gps_time, lat, lon)
+                )
+            except Exception as e:
+                logger.error(f"Error writing GPS data: {e}", exc_info=True)
         else:
             lat = None
             lon = None
             gps_time = None
-        data_list = [ts, lat, lon, fluorometer.gain, avg_voltage, concentration]
-        log_data(DATAFILE, data_list)
+
+        # Write fluorometer data
         try:
             logger.info(
-                f"Timestamp: {ts}, GPS time: {gps_time}, Lat: {lat}, Lon: {lon}, Gain: {fluorometer.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}"
+                f"Timestamp: {ts}, Gain: {fluorometer.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}"
             )
             c.execute(
-                f"INSERT INTO {DB_TABLE} VALUES (?, ?, ?, ?, ?, ?)",
-                (
-                    timestamp,
-                    lat,
-                    lon,
-                    fluorometer.gain,
-                    avg_voltage,
-                    concentration,
-                ),
-            )
-        except (AttributeError, ValueError) as e:
-            logger.error(f"GPS data error: {e}")
-            logger.info(
-                f"Timestamp: {ts}, GPS time: {None}, Lat: {None}, Lon: {None}, Gain: {fluorometer.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}"
-            )
-            c.execute(
-                f"INSERT INTO {DB_TABLE} VALUES (?, ?, ?, ?, ?, ?)",
-                (timestamp, None, None, fluorometer.gain, avg_voltage, concentration),
+                f"INSERT INTO {RHO_TABLE} (datetime_utc, gain, voltage, rho_ppb) VALUES (?, ?, ?, ?)",
+                (timestamp, fluorometer.gain, avg_voltage, concentration)
             )
         except Exception as e:
-            logger.error(f"Error, skipping cycle: {e}", exc_info=True)
+            logger.error(f"Error writing rhodamine data: {e}", exc_info=True)
         finally:
             conn.commit()
             fluorometer.set_autogain(avg_voltage)

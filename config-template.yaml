@@ -27,5 +27,5 @@ file:
 
 # Database settings
 db:
-  filename: fluorometer.db
-  table: fluorometer_data
+  filename: rhodamine.db
+  table: rhodamine
