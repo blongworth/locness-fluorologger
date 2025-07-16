@@ -27,5 +27,6 @@ file:
 
 # Database settings
 db:
+  #filename: C:/Users/CSL 2/Documents/LOCNESS_data/locness.db
   filename: rhodamine.db
   table: rhodamine
