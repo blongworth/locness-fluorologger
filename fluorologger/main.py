@@ -1,6 +1,6 @@
 # main program for fluorologger
 #
-# get current data for GPS, fluormeter, and TSG
+# get current data for fluorometer
 # log to file and database
 
 import csv
@@ -45,11 +45,8 @@ logging.basicConfig(
     handlers=[logging.FileHandler(LOGFILE), logging.StreamHandler()],
 )
 
-
 # Start logger
 logger = logging.getLogger(__name__)
-
-
 
 def log_data(filename, data):
     file_exists = os.path.isfile(filename)
@@ -87,8 +84,13 @@ def log_rho(fluorometer, c, conn):
     Continuously get data and store it in the database and file
     """
     # --- Acquire fluorometer data ---
-    avg_voltage = fluorometer.read_voltage()
-    concentration = fluorometer.convert_to_concentration(avg_voltage)
+    try:
+        avg_voltage = fluorometer.read_voltage()
+        concentration = fluorometer.convert_to_concentration(avg_voltage)
+    except Exception as e:
+        logger.error(f"DAQ hardware error: {e}", exc_info=True)
+        avg_voltage = None
+        concentration = None
     timestamp = time.time()
     ts = datetime.fromtimestamp(timestamp)
 
@@ -115,21 +117,23 @@ def log_rho(fluorometer, c, conn):
     # --- Write fluorometer data to database and CSV ---
     try:
         logger.info(
-            f"Timestamp: {ts}, Gain: {fluorometer.gain}, Voltage: {avg_voltage:.3f}, Concentration: {concentration:.3f}"
+            f"Timestamp: {ts}, Gain: {fluorometer.gain}, Voltage: {avg_voltage}, Concentration: {concentration}"
         )
         # Write to CSV file
         data_list = [ts, lat, lon, fluorometer.gain, avg_voltage, concentration]
         log_data(DATAFILE, data_list)
-        # Write to rhodamine table
-        c.execute(
-            f"INSERT INTO {RHO_TABLE} (datetime_utc, gain, voltage, rho_ppb) VALUES (?, ?, ?, ?)",
-            (timestamp, fluorometer.gain, avg_voltage, concentration)
-        )
+        # Write to rhodamine table only if DAQ succeeded
+        if avg_voltage is not None and concentration is not None:
+            c.execute(
+                f"INSERT INTO {RHO_TABLE} (datetime_utc, gain, voltage, rho_ppb) VALUES (?, ?, ?, ?)",
+                (timestamp, fluorometer.gain, avg_voltage, concentration)
+            )
     except Exception as e:
         logger.error(f"Error writing rhodamine data: {e}", exc_info=True)
     finally:
         conn.commit()
-        fluorometer.set_autogain(avg_voltage)
+        if avg_voltage is not None:
+            fluorometer.set_autogain(avg_voltage)
 
 def schedule_logging(scheduler, fluorometer, c, conn):
     def run_rho(sched):
@@ -172,4 +176,8 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    try:
+        main()
+    except Exception as e:
+        logger.critical(f"Unhandled exception: {e}", exc_info=True)
+        sys.exit(1)
