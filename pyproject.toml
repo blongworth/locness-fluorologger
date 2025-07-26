@@ -21,3 +21,4 @@ dependencies = [
 
 [project.scripts]
 fluorologger = "fluorologger.main:main"
+calibrate = "fluorologger.calibrate_fluorometer:main"

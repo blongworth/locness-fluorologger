@@ -27,7 +27,7 @@ def measure_blank(fluor, gain):
     mean_v = statistics.mean(voltages)
     std_v = statistics.stdev(voltages) if len(voltages) > 1 else 0.0
     print(f"\nBlank {gain}x: mean={mean_v:.5f} V, std={std_v:.5f} V")
-    return mean_v
+    return mean_v, std_v
 
 def measure_standard(fluor):
     print("\n\nPlace the fluorometer in the standard solution.\n"
@@ -47,7 +47,7 @@ def measure_standard(fluor):
     mean_v = statistics.mean(voltages)
     std_v = statistics.stdev(voltages) if len(voltages) > 1 else 0.0
     print(f"\nStandard 10x: mean={mean_v:.5f} V, std={std_v:.5f} V")
-    return mean_v
+    return mean_v, std_v
 
 def main():
     print("Fluorometer Calibration Script\n")
