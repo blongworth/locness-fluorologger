@@ -29,6 +29,11 @@ RHO_SLOPE_100X = config["cal"]["slope_100x"]
 RHO_OFFSET_1X = config["cal"]["offset_1x"]
 RHO_OFFSET_10X = config["cal"]["offset_10x"]
 RHO_OFFSET_100X = config["cal"]["offset_100x"]
+RHO_BLANK_1X = config["cal"]["blank_1x"]
+RHO_BLANK_10X = config["cal"]["blank_10x"]
+RHO_BLANK_100X = config["cal"]["blank_100x"]
+RHO_STD_CONCENTRATION = config["cal"]["rho_std_concentration"]
+RHO_STD_V = config["cal"]["rho_std_voltage_10x"]
 AUTOGAIN = config["gain"]["auto"]
 GAIN = config["gain"]["gain"]
 LOGFILE = config["file"]["log"]
@@ -159,6 +164,11 @@ def main():
         RHO_OFFSET_1X,
         RHO_OFFSET_10X,
         RHO_OFFSET_100X,
+        RHO_STD_V,
+        RHO_BLANK_1X,
+        RHO_BLANK_10X,
+        RHO_BLANK_100X,
+        RHO_STD_CONCENTRATION,
         autogain=AUTOGAIN,
         gain=GAIN,
     )

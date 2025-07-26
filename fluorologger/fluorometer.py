@@ -16,6 +16,11 @@ class Fluorometer:
         offset_1x,
         offset_10x,
         offset_100x,
+        std_concentration,
+        std_voltage_10x,
+        blank_1x,
+        blank_10x,
+        blank_100x,
         autogain=True,
         gain=1,
     ):
@@ -25,6 +30,11 @@ class Fluorometer:
         self.offset_1x = offset_1x
         self.offset_10x = offset_10x
         self.offset_100x = offset_100x
+        self.std_concentration = std_concentration
+        self.std_voltage_10x = std_voltage_10x
+        self.blank_1x = blank_1x
+        self.blank_10x = blank_10x
+        self.blank_100x = blank_100x
         self.autogain = autogain
         self.gain_change_delay = 3  # seconds to delay reading after gain change
         self.last_gain_change = time.time()
@@ -63,12 +73,34 @@ class Fluorometer:
         return avg_voltage
 
     def convert_to_concentration(self, voltage):
+        '''
+        Convert a voltage reading to concentration based on the current gain.
+        Calculate slope from 400 ppb gain at 1x and use zero/offset
+        for each gain.
+        '''
+        
         if self.gain == 1:
             concentration = self.slope_1x * voltage * 1000 + self.offset_1x
         elif self.gain == 10:
             concentration = self.slope_10x * voltage * 1000 + self.offset_10x
         elif self.gain == 100:
             concentration = self.slope_100x * voltage * 1000 + self.offset_100x
+        return concentration
+
+    def convert_to_conc_turner(self, voltage):
+        """
+        Convert a single voltage reading to concentration based on the current gain.
+        Follows Turner technical note S-0243.
+        https://docs.turnerdesigns.com/t2/doc/tech-notes/S-0243.pdf
+        """
+        if self.gain == 1:
+            concentration = (voltage - self.blank_1x) * (self.slope_10x - self.blank_10x) / 10
+        elif self.gain == 10:
+            concentration = (voltage - self.blank_10x) / 10 * (self.slope_10x - self.blank_10x) / 10
+        elif self.gain == 100:
+            concentration = (voltage - self.blank_100x) / 100 * (self.slope_10x - self.blank_10x) / 10
+        else:
+            raise ValueError("Invalid gain setting")
         return concentration
 
     def determine_gain(self, avg_voltage):
