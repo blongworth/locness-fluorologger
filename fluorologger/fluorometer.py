@@ -10,17 +10,19 @@ class Fluorometer:
 
     def __init__(
         self,
-        slope_1x,
-        slope_10x,
-        slope_100x,
-        offset_1x,
-        offset_10x,
-        offset_100x,
-        std_concentration,
-        std_voltage_10x,
-        blank_1x,
-        blank_10x,
-        blank_100x,
+        *,
+        slope_1x=None,
+        slope_10x=None,
+        slope_100x=None,
+        offset_1x=None,
+        offset_10x=None,
+        offset_100x=None,
+        std_concentration=None,
+        std_gain=None,
+        std_voltage=None,
+        blank_1x=None,
+        blank_10x=None,
+        blank_100x=None,
         autogain=True,
         gain=1,
     ):
@@ -31,7 +33,8 @@ class Fluorometer:
         self.offset_10x = offset_10x
         self.offset_100x = offset_100x
         self.std_concentration = std_concentration
-        self.std_voltage_10x = std_voltage_10x
+        self.std_voltage = std_voltage
+        self.std_gain = std_gain
         self.blank_1x = blank_1x
         self.blank_10x = blank_10x
         self.blank_100x = blank_100x
@@ -43,7 +46,7 @@ class Fluorometer:
         # Connect to the DAQ device
         self.task = nidaqmx.Task()
         self.task.ai_channels.add_ai_voltage_chan(
-            "fluor/ai0", terminal_config=TerminalConfiguration.DIFF
+            "fluor2/ai0", terminal_config=TerminalConfiguration.DIFF
         )
         # Configure the timing
         self.task.timing.cfg_samp_clk_timing(rate=1000, samps_per_chan=100)
@@ -51,7 +54,7 @@ class Fluorometer:
         # Add digital output channels
         self.do_task = nidaqmx.Task()
         self.do_task.do_channels.add_do_chan(
-            "fluor/port0/line0:1", line_grouping=LineGrouping.CHAN_PER_LINE
+            "fluor2/port0/line0:1", line_grouping=LineGrouping.CHAN_PER_LINE
         )
 
         # Start the tasks
@@ -73,6 +76,20 @@ class Fluorometer:
         return avg_voltage
 
     def convert_to_concentration(self, voltage):
+        """
+        Convert a voltage reading to concentration based on the current gain.
+        Pick the method based on available params
+        """
+
+        if self.std_concentration and self.std_voltage:
+            return self.convert_to_conc_turner(voltage)
+        elif self.slope_1x and self.slope_10x and self.slope_100x:
+            return self.convert_to_concentration_3pt(voltage)
+        else:
+            logger.error("No valid calibration parameters found.")
+            raise ValueError("No valid calibration parameters found.")
+
+    def convert_to_concentration_3pt(self, voltage):
         '''
         Convert a voltage reading to concentration based on the current gain.
         Calculate slope from 400 ppb gain at 1x and use zero/offset
@@ -93,12 +110,22 @@ class Fluorometer:
         Follows Turner technical note S-0243.
         https://docs.turnerdesigns.com/t2/doc/tech-notes/S-0243.pdf
         """
+
+        if self.std_gain == 1:
+            cal_blank = self.blank_1x
+        elif self.std_gain == 10:
+            cal_blank = self.blank_10x
+        elif self.std_gain == 100:
+            cal_blank = self.blank_100x
+        else:
+            raise ValueError("Invalid standard gain setting")
+
         if self.gain == 1:
-            concentration = (voltage - self.blank_1x) * (self.slope_10x - self.blank_10x) / 10
+            concentration = (voltage - self.blank_1x) * self.std_concentration / (self.std_voltage - cal_blank) / self.std_gain
         elif self.gain == 10:
-            concentration = (voltage - self.blank_10x) / 10 * (self.slope_10x - self.blank_10x) / 10
+            concentration = (voltage - self.blank_10x) / 10 * self.std_concentration / (self.std_voltage - cal_blank) / self.std_gain
         elif self.gain == 100:
-            concentration = (voltage - self.blank_100x) / 100 * (self.slope_10x - self.blank_10x) / 10
+            concentration = (voltage - self.blank_100x) / 100 * self.std_concentration / (self.std_voltage - cal_blank) / self.std_gain
         else:
             raise ValueError("Invalid gain setting")
         return concentration

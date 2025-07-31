@@ -21,25 +21,30 @@ with open("config.yaml", "r") as file:
     config = yaml.safe_load(file)
 
 # Access configuration values
-READ_TIME = config["read_time"]
-GPS_PORT = config.get("gps_port", None)  # Use None if not defined
-RHO_SLOPE_1X = config["cal"]["slope_1x"]
-RHO_SLOPE_10X = config["cal"]["slope_10x"]
-RHO_SLOPE_100X = config["cal"]["slope_100x"]
-RHO_OFFSET_1X = config["cal"]["offset_1x"]
-RHO_OFFSET_10X = config["cal"]["offset_10x"]
-RHO_OFFSET_100X = config["cal"]["offset_100x"]
-RHO_BLANK_1X = config["cal"]["blank_1x"]
-RHO_BLANK_10X = config["cal"]["blank_10x"]
-RHO_BLANK_100X = config["cal"]["blank_100x"]
-RHO_STD_CONCENTRATION = config["cal"]["rho_std_concentration"]
-RHO_STD_V = config["cal"]["rho_std_voltage_10x"]
-AUTOGAIN = config["gain"]["auto"]
-GAIN = config["gain"]["gain"]
-LOGFILE = config["file"]["log"]
-DATAFILE = config["file"]["data"]
-DB_PATH = config["db"]["filename"]
-RHO_TABLE = config["db"]["table"]
+READ_TIME = config.get("read_time", None)
+GPS_PORT = config.get("gps_port", None)
+cal = config.get("cal", {})
+RHO_SLOPE_1X = cal.get("slope_1x", None)
+RHO_SLOPE_10X = cal.get("slope_10x", None)
+RHO_SLOPE_100X = cal.get("slope_100x", None)
+RHO_OFFSET_1X = cal.get("offset_1x", None)
+RHO_OFFSET_10X = cal.get("offset_10x", None)
+RHO_OFFSET_100X = cal.get("offset_100x", None)
+RHO_BLANK_1X = cal.get("blank_1x", None)
+RHO_BLANK_10X = cal.get("blank_10x", None)
+RHO_BLANK_100X = cal.get("blank_100x", None)
+RHO_STD_CONCENTRATION = cal.get("std_concentration", None)
+RHO_STD_V = cal.get("std_voltage", None)
+RHO_STD_GAIN = cal.get("std_gain", None)
+gain_cfg = config.get("gain", {})
+AUTOGAIN = gain_cfg.get("auto", None)
+GAIN = gain_cfg.get("gain", None)
+file_cfg = config.get("file", {})
+LOGFILE = file_cfg.get("log", None)
+DATAFILE = file_cfg.get("data", None)
+db_cfg = config.get("db", {})
+DB_PATH = db_cfg.get("filename", None)
+RHO_TABLE = db_cfg.get("table", None)
 
 # Configure logging
 logging.basicConfig(
@@ -158,17 +163,18 @@ def main():
     else:
         logger.info("GPS disabled - no GPS port configured")
     fluorometer = Fluorometer(
-        RHO_SLOPE_1X,
-        RHO_SLOPE_10X,
-        RHO_SLOPE_100X,
-        RHO_OFFSET_1X,
-        RHO_OFFSET_10X,
-        RHO_OFFSET_100X,
-        RHO_STD_V,
-        RHO_BLANK_1X,
-        RHO_BLANK_10X,
-        RHO_BLANK_100X,
-        RHO_STD_CONCENTRATION,
+        slope_1x=RHO_SLOPE_1X,
+        slope_10x=RHO_SLOPE_10X,
+        slope_100x=RHO_SLOPE_100X,
+        offset_1x=RHO_OFFSET_1X,
+        offset_10x=RHO_OFFSET_10X,
+        offset_100x=RHO_OFFSET_100X,
+        std_voltage=RHO_STD_V,
+        blank_1x=RHO_BLANK_1X,
+        blank_10x=RHO_BLANK_10X,
+        blank_100x=RHO_BLANK_100X,
+        std_concentration=RHO_STD_CONCENTRATION,
+        std_gain=RHO_STD_GAIN,
         autogain=AUTOGAIN,
         gain=GAIN,
     )
