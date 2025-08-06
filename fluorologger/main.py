@@ -119,7 +119,7 @@ def log_rho(fluorometer, c, conn):
         try:
             c.execute(
                 "INSERT INTO gps (datetime_utc, nmea_time, latitude, longitude) VALUES (?, ?, ?, ?)",
-                (timestamp, gps_time, lat, lon)
+                (int(timestamp), gps_time, lat, lon)
             )
         except Exception as e:
             logger.error(f"Error writing GPS data: {e}", exc_info=True)
@@ -136,7 +136,7 @@ def log_rho(fluorometer, c, conn):
         if avg_voltage is not None and concentration is not None:
             c.execute(
                 f"INSERT INTO {RHO_TABLE} (datetime_utc, gain, voltage, rho_ppb) VALUES (?, ?, ?, ?)",
-                (timestamp, fluorometer.gain, avg_voltage, concentration)
+                (int(timestamp), fluorometer.gain, avg_voltage, concentration)
             )
     except Exception as e:
         logger.error(f"Error writing rhodamine data: {e}", exc_info=True)
