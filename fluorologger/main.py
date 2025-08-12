@@ -51,7 +51,7 @@ logging.basicConfig(
     # filename=LOGFILE,
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
-    datefmt="%Y-%m-%dT%H:%M:%S%z",
+    datefmt="%Y-%m-%dT%H:%M:%S",
     handlers=[logging.FileHandler(LOGFILE), logging.StreamHandler()],
 )
 
@@ -127,7 +127,7 @@ def log_rho(fluorometer, c, conn):
     # --- Write fluorometer data to database and CSV ---
     try:
         logger.info(
-            f"Timestamp: {ts}, Gain: {fluorometer.gain}, Voltage: {avg_voltage}, Concentration: {concentration}"
+            f"Gain: {fluorometer.gain}, V: {avg_voltage:.3g}, PPB: {concentration:.3g}"
         )
         # Write to CSV file
         data_list = [ts, lat, lon, fluorometer.gain, avg_voltage, concentration]
